@@ -8,6 +8,24 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 add_link_options(LINKER:--build-id=none)
 add_compile_options(-Wall -Werror)
 
+# Build elf-cleaner
+add_executable(elf-cleaner 
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/elf-cleaner/elf-cleaner.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/elf-cleaner/arghandling.c
+)
+target_compile_options(elf-cleaner PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-std=c++11>
+    $<$<COMPILE_LANGUAGE:C>:-std=c11>
+)
+target_include_directories(elf-cleaner PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/elf-cleaner
+)
+target_compile_definitions(elf-cleaner PRIVATE
+    PACKAGE_NAME="elf-cleaner"
+    PACKAGE_VERSION=""
+    COPYRIGHT=""
+)
+
 add_executable(libwg-quick.so wireguard-tools/src/wg-quick/android.c ndk-compat/compat.c)
 target_compile_options(libwg-quick.so PUBLIC -std=gnu11 -include ${CMAKE_CURRENT_SOURCE_DIR}/ndk-compat/compat.h -DWG_PACKAGE_NAME=\"${ANDROID_PACKAGE_NAME}\")
 target_link_libraries(libwg-quick.so -ldl)
@@ -31,11 +49,6 @@ add_custom_target(libwg-go.so WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
 
 # Strip unwanted ELF sections to prevent DT_FLAGS_1 warnings on old Android versions
-file(GLOB ELF_CLEANER_SOURCES elf-cleaner/*.c elf-cleaner/*.cpp)
-add_custom_target(elf-cleaner COMMENT "Building elf-cleaner" VERBATIM COMMAND c++
-        -O2 -std=c++11 -DPACKAGE_NAME="elf-cleaner" -DPACKAGE_VERSION="" -DCOPYRIGHT=""
-        -o "${CMAKE_CURRENT_BINARY_DIR}/elf-cleaner" ${ELF_CLEANER_SOURCES}
-)
 add_custom_command(TARGET libwg.so POST_BUILD VERBATIM COMMAND "${CMAKE_CURRENT_BINARY_DIR}/elf-cleaner"
         --api-level "${ANDROID_NATIVE_API_LEVEL}" "$<TARGET_FILE:libwg.so>")
 add_dependencies(libwg.so elf-cleaner)
