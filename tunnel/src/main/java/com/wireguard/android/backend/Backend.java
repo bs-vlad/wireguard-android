@@ -9,6 +9,7 @@ import com.wireguard.config.Config;
 import com.wireguard.util.NonNullForAll;
 
 import java.util.Set;
+import java.util.List;
 
 import androidx.annotation.Nullable;
 
@@ -60,8 +61,9 @@ public interface Backend {
      * @param state  The new state for this tunnel. Must be {@code UP}, {@code DOWN}, or
      *               {@code TOGGLE}.
      * @param config The configuration for this tunnel, may be null if state is {@code DOWN}.
+     * @param splitTunnelingIps List of IPs in CIDR notation (e.g. "1.2.3.4/32") to exclude from VPN routing.
      * @return The updated state of the tunnel.
      * @throws Exception Exception raised while changing state.
      */
-    Tunnel.State setState(Tunnel tunnel, Tunnel.State state, @Nullable Config config) throws Exception;
+    Tunnel.State setState(Tunnel tunnel, Tunnel.State state, @Nullable Config config, @Nullable List<String> splitTunnelingIps) throws Exception;
 }

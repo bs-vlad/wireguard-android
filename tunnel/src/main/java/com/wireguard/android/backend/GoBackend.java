@@ -26,6 +26,7 @@ import com.wireguard.util.NonNullForAll;
 import java.net.InetAddress;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -195,11 +196,12 @@ public final class GoBackend implements Backend {
      * @param state  The new state for this tunnel. Must be {@code UP}, {@code DOWN}, or
      *               {@code TOGGLE}.
      * @param config The configuration for this tunnel, may be null if state is {@code DOWN}.
+     * @param splitTunnelingIps The list of split tunneling IPs to apply to the tunnel.
      * @return {@link State} of the tunnel after state changes are applied.
      * @throws Exception Exception raised while changing tunnel state.
      */
     @Override
-    public State setState(final Tunnel tunnel, State state, @Nullable final Config config) throws Exception {
+    public State setState(final Tunnel tunnel, State state, @Nullable final Config config, @Nullable final List<String> splitTunnelingIps) throws Exception {
         final State originalState = getState(tunnel);
 
         if (state == State.TOGGLE)
@@ -210,21 +212,21 @@ public final class GoBackend implements Backend {
             final Config originalConfig = currentConfig;
             final Tunnel originalTunnel = currentTunnel;
             if (currentTunnel != null)
-                setStateInternal(currentTunnel, null, State.DOWN);
+                setStateInternal(currentTunnel, null, State.DOWN, null);
             try {
-                setStateInternal(tunnel, config, state);
+                setStateInternal(tunnel, config, state, splitTunnelingIps);
             } catch (final Exception e) {
                 if (originalTunnel != null)
-                    setStateInternal(originalTunnel, originalConfig, State.UP);
+                    setStateInternal(originalTunnel, originalConfig, State.UP, null);
                 throw e;
             }
         } else if (state == State.DOWN && tunnel == currentTunnel) {
-            setStateInternal(tunnel, null, State.DOWN);
+            setStateInternal(tunnel, null, State.DOWN, null);
         }
         return getState(tunnel);
     }
 
-    private void setStateInternal(final Tunnel tunnel, @Nullable final Config config, final State state)
+    private void setStateInternal(final Tunnel tunnel, @Nullable final Config config, final State state, @Nullable final List<String> splitTunnelingIps)
             throws Exception {
         Log.i(TAG, "Bringing tunnel " + tunnel.getName() + ' ' + state);
 
@@ -254,7 +256,6 @@ public final class GoBackend implements Backend {
                 Log.w(TAG, "Tunnel already up");
                 return;
             }
-
 
             dnsRetry: for (int i = 0; i < DNS_RESOLUTION_RETRIES; ++i) {
                 // Pre-resolve IPs so they're cached when building the userspace string
@@ -302,6 +303,28 @@ public final class GoBackend implements Backend {
                     if (addr.getMask() == 0)
                         sawDefaultRoute = true;
                     builder.addRoute(addr.getAddress(), addr.getMask());
+                }
+            }
+
+            // Add split tunneling excluded routes
+            if (splitTunnelingIps != null && !splitTunnelingIps.isEmpty()) {
+                for (String ipCidr : splitTunnelingIps) {
+                    try {
+                        String[] parts = ipCidr.split("/");
+                        if (parts.length == 2) {
+                            InetAddress address = InetAddress.getByName(parts[0]);
+                            int mask = Integer.parseInt(parts[1]);
+                            // On Android 12+ we can use addRoute with the 'bypass' flag
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                builder.addRoute(address, mask, null, true);
+                            } else {
+                                // For older Android versions, we exclude the route
+                                builder.excludeRoute(address, mask);
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Invalid split tunneling IP: " + ipCidr, e);
+                    }
                 }
             }
 
