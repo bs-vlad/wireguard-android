@@ -10,15 +10,15 @@ add_compile_options(-Wall -Werror)
 
 # Build elf-cleaner
 add_executable(elf-cleaner 
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools/elf-cleaner/elf-cleaner.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools/elf-cleaner/arghandling.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/elf-cleaner/elf-cleaner.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/elf-cleaner/arghandling.c
 )
 target_compile_options(elf-cleaner PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++11>
     $<$<COMPILE_LANGUAGE:C>:-std=c11>
 )
 target_include_directories(elf-cleaner PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/tools/elf-cleaner
+    ${CMAKE_CURRENT_SOURCE_DIR}/elf-cleaner
 )
 target_compile_definitions(elf-cleaner PRIVATE
     PACKAGE_NAME="elf-cleaner"

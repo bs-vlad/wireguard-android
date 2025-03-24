@@ -1,10 +1,10 @@
 jdk:
   - openjdk17
+
 install:
-  - echo "Installing build dependencies..."
-  - apt-get update
-  - apt-get install -y build-essential cmake g++-11
-  - export CC=gcc-11
-  - export CXX=g++-11
+  - echo "Setting up repositories..."
+  - git submodule update --init --recursive
+  - echo "Fixing elf-cleaner structure..."
+  - if [ ! -f tunnel/tools/elf-cleaner/elf-cleaner.cpp ]; then curl -L https://raw.githubusercontent.com/termux/termux-elf-cleaner/master/elf-cleaner.cpp -o tunnel/tools/elf-cleaner/elf-cleaner.cpp; curl -L https://raw.githubusercontent.com/termux/termux-elf-cleaner/master/arghandling.c -o tunnel/tools/elf-cleaner/arghandling.c; fi
   - echo "Running Gradle build..."
   - ./gradlew clean build publishToMavenLocal 
